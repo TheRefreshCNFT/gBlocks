@@ -22,6 +22,7 @@ const FONT_SIZE = 72;
 const ROWS = 20;
 const COLS = 16;
 const MESSAGE = "FOMZ likes purple orange blue and pink";
+const ua = navigator.userAgent || navigator.vendor || window.opera;
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -29,6 +30,7 @@ const ctx = canvas.getContext('2d');
 let particles = [];
 let scaledFontSize, scaledLetterSpacing, scaledLineHeight;
 let lines = [];
+let sPd, oP;
 
 function buildText() {
     const encoder = new TextEncoder();
@@ -111,10 +113,20 @@ function drawParticles() {
     let allArrived = true;
 
     particles.forEach(p => {
+      if (/android/i.test(ua)) {
+      sPd = 0.3;
+      oP = 0.05;
+      } else if (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) {
+      sPd = 0.06;
+      oP = 0.0075
+      } else {
+      sPd = 0.015;
+      oP = 0.002
+      }
         if (!p.arrived) {
-            p.x += (p.targetX - p.x) * 0.05;
-            p.y += (p.targetY - p.y) * 0.05;
-            p.opacity += 0.01;
+            p.x += (p.targetX - p.x) * sPd;
+            p.y += (p.targetY - p.y) * sPd;
+            p.opacity += oP;
             if (Math.abs(p.x - p.targetX) < 0.5 && Math.abs(p.y - p.targetY) < 0.5) {
                 p.x = p.targetX;
                 p.y = p.targetY;
@@ -172,8 +184,6 @@ function resizeCanvas() {
     scaledLetterSpacing  = letterWidth;
     scaledLineHeight     = lineHeight;
 }
-
-
 
 function saveCanvasImage() {
     const exportScale = 1;                      // 4× up‑sampling for extra crispness
