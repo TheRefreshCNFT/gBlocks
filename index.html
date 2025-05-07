@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>gBlocks4 - Canvas Static Version</title>
+<title>gBlocks4 - Canvas Static + Chase</title>
 <style>
 body, html { margin:0; padding:0; height:100%; overflow:hidden; background:#000000; }
 canvas { display:block; margin:auto; position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); }
@@ -21,13 +21,17 @@ const FONT_SIZE = 72;
 const ROWS = 20;
 const COLS = 16;
 const MESSAGE = "FOMZ likes purple orange blue and pink";
-const ua = navigator.userAgent || navigator.vendor || window.opera;
+const COLOR1 = '#ff00ff';
+const COLOR2 = '#00ffff';
+const COLOR3 = '#ffff00';
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
 let scaledFontSize, scaledLetterSpacing, scaledLineHeight;
 let lines = [];
+let chars = [];
+let flickerToggle = true;
 
 function buildText() {
     const encoder = new TextEncoder();
@@ -78,61 +82,63 @@ function setupChars() {
                 char,
                 x: startX + j * scaledLetterSpacing,
                 y: startY + i * scaledLineHeight,
-                color: TEXT_COLOR,
-                scale: 1,
-                rotation: 0
+                flickerShadow: true, // 🔥 ALL characters will flicker now
+                chaseColor: null
             });
         });
     });
 }
 
-// NEW FLICKER EFFECT 🔥
-let flickerToggle = true;
 
 function flickerEffect() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
     ctx.fillStyle = BG_COLOR;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.textBaseline = 'top';
     ctx.textAlign = 'left';
     ctx.font = `${scaledFontSize}px ${FONT_FAMILY}`;
-    ctx.fillStyle = TEXT_COLOR;
 
-    const padding = scaledFontSize * 0.8;
-    const startX = padding;
-    const startY = padding;
-
-    if (flickerToggle) {
-        ctx.shadowColor = 'blue';
-        ctx.shadowBlur = 25;
-    } else {
-        ctx.shadowColor = 'transparent';
-        ctx.shadowBlur = 0;
-    }
-
-    lines.forEach((line, i) => {
-        [...line].forEach((char, j) => {
-            const x = startX + j * scaledLetterSpacing;
-            const y = startY + i * scaledLineHeight;
-            ctx.fillText(char, x, y);
-        });
+    chars.forEach(c => {
+        ctx.save();
+        ctx.translate(c.x, c.y);
+        ctx.fillStyle = c.chaseColor || TEXT_COLOR;
+        if (c.flickerShadow && flickerToggle) {
+            ctx.shadowColor = 'blue';
+            ctx.shadowBlur = 25;
+        } else {
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+        }
+        ctx.fillText(c.char, 0, 0);
+        ctx.restore();
     });
-
-    ctx.shadowColor = 'transparent';
-    ctx.shadowBlur = 0;
 
     flickerToggle = !flickerToggle;
 
-    // 🔥 Randomize next flicker time
-    const nextDelay = 25 + Math.random() * 300;  // between 50ms and 350ms
+    const nextDelay = 25 + Math.random() * 300;
     setTimeout(flickerEffect, nextDelay);
 }
 
-// Start random flickering
-setTimeout(flickerEffect, 400);
+function startColorChase() {
+    const colors = [COLOR1, COLOR2, COLOR3];
+    let index = 0;
 
+    setInterval(() => {
+        let start = Math.floor(Math.random() * chars.length);
+
+        for (let i = 0; i < chars.length; i++) {
+            setTimeout(() => {
+                chars[(start + i) % chars.length].chaseColor = colors[(index + i) % colors.length];
+                setTimeout(() => {
+                    chars[(start + i) % chars.length].chaseColor = null;
+                }, 200);
+            }, i * 20);
+        }
+
+        index = (index + 1) % colors.length;
+    }, 2000);
+}
 
 function resizeCanvas() {
     const baseFontSize = FONT_SIZE;
@@ -179,20 +185,15 @@ function saveCanvasImage() {
     const pixelBlockWidth = blockWidth * dpr;
     const pixelBlockHeight = blockHeight * dpr;
 
-    // Create a new blank temp canvas
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = pixelBlockWidth * exportScale;
     tempCanvas.height = pixelBlockHeight * exportScale;
     const tempCtx = tempCanvas.getContext('2d');
 
-    // Set high quality rendering
     tempCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-    // Draw clean background
     tempCtx.fillStyle = BG_COLOR;
     tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
-    // Draw original (non-animated) text
     tempCtx.fillStyle = TEXT_COLOR;
     tempCtx.font = `${scaledFontSize}px ${FONT_FAMILY}`;
     tempCtx.textBaseline = 'top';
@@ -209,7 +210,6 @@ function saveCanvasImage() {
         });
     });
 
-    // Trigger download
     const link = document.createElement('a');
     link.href = tempCanvas.toDataURL('image/png');
     link.download = 'gBlocks.png';
@@ -242,12 +242,14 @@ function saveCanvasImage() {
 window.addEventListener('resize', () => {
     lines = buildText();
     resizeCanvas();
-    setupChars()
+    setupChars();
 });
 
 lines = buildText();
 resizeCanvas();
-setupChars()
+setupChars();
+setTimeout(flickerEffect, 400);
+setTimeout(startColorChase, 500);
 </script>
 
 </body>
