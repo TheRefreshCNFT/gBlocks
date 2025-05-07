@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>gBlocks4 - Canvas Fixed Version</title>
+<title>gBlocks4 - Canvas Animated Version</title>
 <style>
 body, html { margin:0; padding:0; height:100%; overflow:hidden; background:#000000; }
 canvas { display:block; margin:auto; position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); }
@@ -14,23 +14,25 @@ canvas { display:block; margin:auto; position:absolute; top:50%; left:50%; trans
 <canvas id="canvas"></canvas>
 
 <script>
-const TEXT_COLOR = '#5F01B8';
-const BG_COLOR = '#00F3FF';
-const canClr = '#ff0000'
+const TEXT_COLOR = '#ffffff';
+const BG_COLOR = '#000000';
 const FONT_FAMILY = 'monospace';
 const FONT_SIZE = 72;
 const ROWS = 20;
 const COLS = 16;
 const MESSAGE = "FOMZ likes purple orange blue and pink";
-const ua = navigator.userAgent || navigator.vendor || window.opera;
+
+const COLORS = [
+  '#ff00ff', '#00ffff', '#ffff00', '#ff6600', '#00ff00', '#ff0033', '#33ccff', '#cc33ff'
+];
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
+canvas.style.touchAction = "manipulation";
 
-let particles = [];
 let scaledFontSize, scaledLetterSpacing, scaledLineHeight;
 let lines = [];
-let sPd, oP;
+let chars = []; // Track character objects
 
 function buildText() {
     const encoder = new TextEncoder();
@@ -68,166 +70,103 @@ function buildText() {
     return generatedLines;
 }
 
-function setupParticles() {
-    particles = [];
-
+function setupChars() {
+    chars = [];
     ctx.font = `${scaledFontSize}px ${FONT_FAMILY}`;
-
-    const textBlockWidth = Math.max(...lines.map(line => line.length)) * scaledLetterSpacing;
-    const textBlockHeight = lines.length * scaledLineHeight;
     const padding = scaledFontSize * 0.8;
-
     const startX = padding;
     const startY = padding;
 
     lines.forEach((line, i) => {
         [...line].forEach((char, j) => {
-            const x = startX + j * scaledLetterSpacing;
-            const y = startY + i * scaledLineHeight;
-            const angle = Math.random() * 2 * Math.PI;
-            const dist = Math.random() * (canvas.width / 2);
-            particles.push({
+            chars.push({
                 char,
-                startX: x + Math.cos(angle) * dist,
-                startY: y + Math.sin(angle) * dist,
-                targetX: x,
-                targetY: y,
-                x: x + Math.cos(angle) * dist,
-                y: y + Math.sin(angle) * dist,
-                opacity: 0,
-                arrived: false
+                x: startX + j * scaledLetterSpacing,
+                y: startY + i * scaledLineHeight,
+                color: TEXT_COLOR,
+                scale: 1,
+                rotation: 0
             });
         });
     });
 }
 
-function drawParticles() {
+function rF(min,max) {
+	  return Math.random() * (max - min) + min;
+	}
+
+function animate() {
+    // Randomize properties
+    chars.forEach(c => {
+        const glowColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+        c.color = COLORS[Math.floor(Math.random() * COLORS.length)];
+        c.shadowColor = glowColor;
+        c.shadowBlur = 10 + Math.random() * 70; // 15-25px blur
+        c.scale = 1 + Math.random() * 0.25;
+        c.rotation = (Math.random() * 20 - 10) * (Math.PI / 180); // degrees to radians
+    });
+
+    drawCanvas();
+}
+
+function drawCanvas() {
     ctx.fillStyle = BG_COLOR;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.fillStyle = TEXT_COLOR;
-    ctx.font = `${scaledFontSize}px ${FONT_FAMILY}`;
     ctx.textBaseline = 'top';
     ctx.textAlign = 'left';
 
-    let allArrived = true;
-
-    particles.forEach(p => {
-      if (/android/i.test(ua)) {
-      sPd = 0.3;
-      oP = 0.05;
-      } else if (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) {
-      sPd = 0.06;
-      oP = 0.0075
-      } else {
-      sPd = 0.015;
-      oP = 0.002
-      }
-        if (!p.arrived) {
-            p.x += (p.targetX - p.x) * sPd;
-            p.y += (p.targetY - p.y) * sPd;
-            p.opacity += oP;
-            if (Math.abs(p.x - p.targetX) < 0.5 && Math.abs(p.y - p.targetY) < 0.5) {
-                p.x = p.targetX;
-                p.y = p.targetY;
-                p.opacity = 1;
-                p.arrived = true;
-            } else {
-                allArrived = false;
-            }
-        }
-        ctx.globalAlpha = p.opacity;
-        ctx.fillText(p.char, p.x, p.y);
+    chars.forEach(c => {
+        ctx.save();
+        ctx.translate(c.x, c.y);
+        ctx.rotate(c.rotation);
+        ctx.scale(c.scale, c.scale);
+        ctx.shadowColor = c.shadowColor || 'transparent'; // default no-shadow
+        ctx.shadowBlur = c.shadowBlur || 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+        ctx.fillStyle = c.color;
+        ctx.font = `${scaledFontSize}px ${FONT_FAMILY}`;
+        ctx.fillText(c.char, 0, 0);
+        ctx.fillText(c.char, 0.5, 0);
+        ctx.restore();
     });
-
-    ctx.globalAlpha = 1.0;
-
-    if (!allArrived) {
-        requestAnimationFrame(drawParticles);
-    }
 }
 
-
+// Resize logic
 function resizeCanvas() {
-    const baseFontSize       = FONT_SIZE;
-    const baseLetterSpacing  = 0.6;  // relative to FONT_SIZE
-    const baseLineHeight     = 1.2;  // relative to FONT_SIZE
-    const paddingRatio       = 0.8;  // scaledFontSize * paddingRatio = padding
+    const baseFontSize = FONT_SIZE;
+    const baseLetterSpacing = 0.6;
+    const baseLineHeight = 1.2;
+    const paddingRatio = 0.8;
 
-    // 1) compute your block at the BASE font size
-    const letterWidth     = baseFontSize * baseLetterSpacing;
-    const lineHeight      = baseFontSize * baseLineHeight;
-    const textBlockWidth  = Math.max(...lines.map(l => l.length)) * letterWidth;
+    const letterWidth = baseFontSize * baseLetterSpacing;
+    const lineHeight = baseFontSize * baseLineHeight;
+    const textBlockWidth = Math.max(...lines.map(l => l.length)) * letterWidth;
     const textBlockHeight = lines.length * lineHeight;
-    const padding         = baseFontSize * paddingRatio;
-    const blockWidth      = textBlockWidth  + padding * 2;
-    const blockHeight     = textBlockHeight + padding * 2;
+    const padding = baseFontSize * paddingRatio;
+    const blockWidth = textBlockWidth + padding * 2;
+    const blockHeight = textBlockHeight + padding * 2;
 
-    // 2) fit that block via CSS so the canvas element scales down in the page
-    const margin          = 20;
-    const availW          = window.innerWidth  - margin * 2;
-    const availH          = window.innerHeight - margin * 2;
-    const fitScale        = Math.min(availW / blockWidth, availH / blockHeight);
-    canvas.style.width    = `${blockWidth  * fitScale}px`;
-    canvas.style.height   = `${blockHeight * fitScale}px`;
+    const margin = 5;
+    const availW = window.innerWidth - margin * 2;
+    const availH = window.innerHeight - margin * 2;
+    const fitScale = Math.min(availW / blockWidth, availH / blockHeight);
+    canvas.style.width = `${blockWidth * fitScale}px`;
+    canvas.style.height = `${blockHeight * fitScale}px`;
 
-    // 3) allocate a high‑res backing buffer once
-    const dpr             = window.devicePixelRatio || 1;
-    canvas.width          = blockWidth  * dpr;
-    canvas.height         = blockHeight * dpr;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = blockWidth * dpr;
+    canvas.height = blockHeight * dpr;
 
-    // 4) reset any previous transforms, then scale to logical coords
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    // 5) tell the rest of your code to draw at the BASE font size
-    scaledFontSize       = baseFontSize;
-    scaledLetterSpacing  = letterWidth;
-    scaledLineHeight     = lineHeight;
+    scaledFontSize = baseFontSize;
+    scaledLetterSpacing = letterWidth;
+    scaledLineHeight = lineHeight;
 }
 
-function saveCanvasImage() {
-    const exportScale = 1;                      // 4× up‑sampling for extra crispness
-    const padding = scaledFontSize * 0.8;       // same padding logic you already use
-
-    // these are still in logical‑px
-    const textWidth   = Math.max(...lines.map(l => l.length)) * scaledLetterSpacing;
-    const textHeight  = lines.length * scaledLineHeight;
-    const blockWidth  = textWidth  + padding * 2;
-    const blockHeight = textHeight + padding * 2;
-
-    // canvas.width/height are in **device** pixels (blockSize × dpr)
-    const dpr = window.devicePixelRatio || 1;
-    const pixelBlockWidth  = blockWidth  * dpr;
-    const pixelBlockHeight = blockHeight * dpr;
-    const pixelBlockX      = (canvas.width  - pixelBlockWidth ) / 2;
-    const pixelBlockY      = (canvas.height - pixelBlockHeight) / 2;
-
-    //  — create a temp canvas at the export resolution —
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width  = pixelBlockWidth  * exportScale;
-    tempCanvas.height = pixelBlockHeight * exportScale;
-    const tempCtx = tempCanvas.getContext('2d');
-
-    //  — draw the high‑res crop, scaled up by exportScale —
-    tempCtx.drawImage(
-        canvas,
-        pixelBlockX, pixelBlockY,               // source origin in device px
-        pixelBlockWidth, pixelBlockHeight,      // source size in device px
-        0, 0,                                   // destination origin
-        tempCanvas.width, tempCanvas.height     // destination size
-    );
-
-    //  — immediate PNG download —
-    const link = document.createElement('a');
-    link.href = tempCanvas.toDataURL('image/png');
-    link.download = 'gBlocks.png';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
-
-
-// TAP/DOUBLE TAP
+// Double tap / single tap (save image or reload)
 (function(){
     let tapCount = 0;
     let tapTimer = null;
@@ -243,24 +182,79 @@ function saveCanvasImage() {
                 saveCanvasImage();
             }
             tapCount = 0;
-        }, 300); // 300ms window for double-tap
+        }, 300);
     });
 })();
 
+function saveCanvasImage() {
+    const exportScale = 1;
+    const padding = scaledFontSize * 0.8;
 
+    const textWidth = Math.max(...lines.map(l => l.length)) * scaledLetterSpacing;
+    const textHeight = lines.length * scaledLineHeight;
+    const blockWidth = textWidth + padding * 2;
+    const blockHeight = textHeight + padding * 2;
+
+    const dpr = window.devicePixelRatio || 1;
+    const pixelBlockWidth = blockWidth * dpr;
+    const pixelBlockHeight = blockHeight * dpr;
+
+    // Create a new blank temp canvas
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = pixelBlockWidth * exportScale;
+    tempCanvas.height = pixelBlockHeight * exportScale;
+    const tempCtx = tempCanvas.getContext('2d');
+
+    // Set high quality rendering
+    tempCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    // Draw clean background
+    tempCtx.fillStyle = BG_COLOR;
+    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+    // Draw original (non-animated) text
+    tempCtx.fillStyle = TEXT_COLOR;
+    tempCtx.font = `${scaledFontSize}px ${FONT_FAMILY}`;
+    tempCtx.textBaseline = 'top';
+    tempCtx.textAlign = 'left';
+
+    const startX = padding;
+    const startY = padding;
+
+    lines.forEach((line, i) => {
+        [...line].forEach((char, j) => {
+            const x = startX + j * scaledLetterSpacing;
+            const y = startY + i * scaledLineHeight;
+            tempCtx.fillText(char, x, y);
+        });
+    });
+
+    // Trigger download
+    const link = document.createElement('a');
+    link.href = tempCanvas.toDataURL('image/png');
+    link.download = 'gBlocks.png';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
 
 // INIT
 window.addEventListener('resize', () => {
     lines = buildText();
     resizeCanvas();
-    setupParticles();
-    requestAnimationFrame(drawParticles);
+    setupChars();
+    drawCanvas();
 });
 
 lines = buildText();
 resizeCanvas();
-setupParticles();
-requestAnimationFrame(drawParticles);
+setupChars();
+drawCanvas();
+
+// Start psychedelic animation every second
+setInterval(() => {
+    animate();
+}, 1000);
 
 </script>
 
