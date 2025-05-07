@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>gBlocks4 - Canvas Static + Chase</title>
+<title>gBlocks4 - Canvas Static + Color Chase</title>
 <style>
 body, html { margin:0; padding:0; height:100%; overflow:hidden; background:#000000; }
 canvas { display:block; margin:auto; position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); }
@@ -31,14 +31,13 @@ const ctx = canvas.getContext('2d');
 let scaledFontSize, scaledLetterSpacing, scaledLineHeight;
 let lines = [];
 let chars = [];
-let flickerToggle = true;
 
 function buildText() {
     const encoder = new TextEncoder();
     const messageBytes = Array.from(encoder.encode(MESSAGE));
     let messagePos = 0;
     const startRow = 10;
-    let generatedLines = [];
+    const generatedLines = [];
 
     for (let i = 0; i < ROWS; i++) {
         const address = (i * 16).toString(16).padStart(8, '0').toUpperCase();
@@ -82,15 +81,13 @@ function setupChars() {
                 char,
                 x: startX + j * scaledLetterSpacing,
                 y: startY + i * scaledLineHeight,
-                flickerShadow: true, // 🔥 ALL characters will flicker now
                 chaseColor: null
             });
         });
     });
 }
 
-
-function flickerEffect() {
+function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = BG_COLOR;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -100,24 +97,11 @@ function flickerEffect() {
     ctx.font = `${scaledFontSize}px ${FONT_FAMILY}`;
 
     chars.forEach(c => {
-        ctx.save();
-        ctx.translate(c.x, c.y);
         ctx.fillStyle = c.chaseColor || TEXT_COLOR;
-        if (c.flickerShadow && flickerToggle) {
-            ctx.shadowColor = 'blue';
-            ctx.shadowBlur = 25;
-        } else {
-            ctx.shadowColor = 'transparent';
-            ctx.shadowBlur = 0;
-        }
-        ctx.fillText(c.char, 0, 0);
-        ctx.restore();
+        ctx.fillText(c.char, c.x, c.y);
     });
 
-    flickerToggle = !flickerToggle;
-
-    const nextDelay = 25 + Math.random() * 300;
-    setTimeout(flickerEffect, nextDelay);
+    requestAnimationFrame(render);
 }
 
 function startColorChase() {
@@ -125,17 +109,16 @@ function startColorChase() {
     let index = 0;
 
     setInterval(() => {
-        let start = Math.floor(Math.random() * chars.length);
-
+        const start = Math.floor(Math.random() * chars.length);
         for (let i = 0; i < chars.length; i++) {
             setTimeout(() => {
-                chars[(start + i) % chars.length].chaseColor = colors[(index + i) % colors.length];
+                const idx = (start + i) % chars.length;
+                chars[idx].chaseColor = colors[(index + i) % colors.length];
                 setTimeout(() => {
-                    chars[(start + i) % chars.length].chaseColor = null;
+                    chars[idx].chaseColor = null;
                 }, 200);
             }, i * 20);
         }
-
         index = (index + 1) % colors.length;
     }, 2000);
 }
@@ -238,7 +221,6 @@ function saveCanvasImage() {
     });
 })();
 
-// INIT
 window.addEventListener('resize', () => {
     lines = buildText();
     resizeCanvas();
@@ -248,8 +230,8 @@ window.addEventListener('resize', () => {
 lines = buildText();
 resizeCanvas();
 setupChars();
-setTimeout(flickerEffect, 400);
-setTimeout(startColorChase, 500);
+startColorChase();
+render();
 </script>
 
 </body>
