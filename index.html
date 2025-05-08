@@ -107,7 +107,10 @@ class Snake {
     this.maxLength  = mL;
     this.stepDelay  = 80;
     this.lastStep   = 0;
-  }
+    this.shadowColor = this.color;
+    this.shadowBlur = 10 + Math.random() * 70; // 15-25px blur
+}
+
   update(now) {
       if (now - this.lastStep < this.stepDelay) return;
       this.lastStep = now;
@@ -120,10 +123,14 @@ class Snake {
 
       // push head into trail, pop tail if too long
       this.trail.push(this.head);
-      if (this.trail.length > this.maxLength) {
-        const tail = this.trail.shift();
-        chars[tail].chaseColor = null;
-      }
+      // after this.trail.push(this.head);
+chars[this.head].shadowBlur = this.shadowBlur;
+if (this.trail.length > this.maxLength) {
+  const tail = this.trail.shift();
+  chars[tail].chaseColor = null;
+  chars[tail].shadowBlur = 0;
+}
+
     }
     draw() {
       // Color each segment of the trail:
@@ -164,7 +171,14 @@ function animate(now) {
   chars.forEach(c=>{
     ctx.save(); ctx.translate(c.x,c.y);
     ctx.fillStyle = c.chaseColor||TEXT_COLOR;
-    ctx.fillText(c.char,0,0);
+    if (c.chaseColor) {
+      ctx.shadowColor = c.chaseColor;
+      ctx.shadowBlur  = c.shadowBlur || 0;
+    } else {
+      ctx.shadowBlur = 0;
+    }
+    ctx.fillText(c.char, 0, 0);
+    ctx.fillText(c.char, 0, 0.5);
     ctx.restore();
   });
   // update & draw snakes
