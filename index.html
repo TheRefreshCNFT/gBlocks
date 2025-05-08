@@ -3,34 +3,39 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>gBlocks4 - Canvas Static + Random Snake Chase</title>
+<title>maybeWorkOn - Canvas Static + Color Chase</title>
 <style>
-  body, html { margin:0; padding:0; height:100%; overflow:hidden; background:#000; }
+  body, html { margin:0; padding:0; height:100%; overflow:hidden; background:#000000; }
   canvas { display:block; margin:auto; position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); }
 </style>
 </head>
 <body>
+
 <canvas id="canvas"></canvas>
+
 <script>
 // ---- Constants ----
-const TEXT_COLOR = '#ffffff';
+const TEXT_COLOR = '#000000';
 const BG_COLOR   = '#000000';
 const FONT_FAMILY= 'monospace';
 const FONT_SIZE  = 72;
 const ROWS       = 20;
 const COLS       = 16;
 const MESSAGE    = "FOMZ likes purple orange blue and pink";
-const COLORS     = ['#ff00ff','#00ffff','#ffff00'];
-const MAX_SNAKES = 8;
-const mL = 7;
+const COLORS     = ['#ff00ff','#00ffff','#ffff00', '#badeaf', '#ecd3ad'];
+const TXT_SV_CLR = '#ffffff';
 
 // ---- Canvas Setup ----
 const canvas = document.getElementById('canvas');
 const ctx    = canvas.getContext('2d');
 let scaledFontSize, scaledLetterSpacing, scaledLineHeight;
-let lines   = [], chars = [];
-let snakes  = [];
+let lines = [], chars = [];
+let charsPerRow, totalCols;
+let snakes = [];
 
+// --------------------
+// Layout functions from assetOfish.html
+// --------------------
 function buildText() {
   const encoder = new TextEncoder();
   const messageBytes = Array.from(encoder.encode(MESSAGE));
@@ -39,173 +44,190 @@ function buildText() {
   const result = [];
 
   for (let i = 0; i < ROWS; i++) {
-    const address = (i * COLS).toString(16).padStart(8, '0').toUpperCase();
-    let hexPart = '';
-    let asciiPart = '';
-
+    const address = (i * COLS).toString(16).padStart(8,'0').toUpperCase();
+    let hexPart='', asciiPart='';
     for (let j = 0; j < COLS; j++) {
-      let byte = Math.floor(Math.random() * 256);
-      let asciiChar = '.';
-
-      // force rows 0 & 1, plus cols 0–11 of row 2, to all be “.”
+      let byte = Math.floor(Math.random()*256);
+      let ch = '.';
       if (i < 2 || (i === 2 && j < 8)) {
-        asciiChar = '.';
-      }
-      else if (i >= startRow && messagePos < messageBytes.length) {
+        ch = '.';
+      } else if (i >= startRow && messagePos < messageBytes.length) {
         byte = messageBytes[messagePos++];
-        asciiChar = String.fromCharCode(byte);
+        ch = String.fromCharCode(byte);
+      } else {
+        ch = (byte >= 32 && byte <= 126) ? String.fromCharCode(byte) : '.';
       }
-      else {
-        asciiChar = (byte >= 32 && byte <= 126)
-          ? String.fromCharCode(byte)
-          : '.';
-      }
-
-      const hex = byte.toString(16).padStart(2, '0').toUpperCase();
-      hexPart += hex + (j === 7 ? '  ' : ' ');
-      asciiPart += asciiChar;
+      hexPart += byte.toString(16).padStart(2,'0').toUpperCase() + (j === 7 ? '  ' : ' ');
+      asciiPart += ch;
     }
-
     result.push(`${address}   ${hexPart} ${asciiPart}`);
   }
-
   return result;
 }
 
 function setupChars() {
   chars = [];
   ctx.font = `${scaledFontSize}px ${FONT_FAMILY}`;
-  const pad = scaledFontSize*0.8;
-  lines.forEach((line,i) => {
-    [...line].forEach((c,j) => {
-      chars.push({ char:c, x:pad + j*scaledLetterSpacing, y:pad + i*scaledLineHeight, chaseColor:null });
+  const pad = scaledFontSize * 0.8;
+  lines.forEach((line, row) => {
+    [...line].forEach((c, col) => {
+      chars.push({
+        char: c,
+        x: pad + col * scaledLetterSpacing,
+        y: pad + row * scaledLineHeight,
+        chaseColor: null
+      });
     });
   });
+  charsPerRow = lines[0].length;
+  totalCols = charsPerRow;
 }
 
 function resizeCanvas() {
   const base = FONT_SIZE;
-  const letterW = base*0.6;
-  const lineH   = base*1.2;
-  const pad      = base*0.8;
-  const blockW   = Math.max(...lines.map(l=>l.length))*letterW + pad*2;
-  const blockH   = lines.length*lineH + pad*2;
-  const margin   = 5;
-  const scale    = Math.min((innerWidth-margin*2)/blockW,(innerHeight-margin*2)/blockH);
-  canvas.style.width  = `${blockW*scale}px`;
-  canvas.style.height = `${blockH*scale}px`;
-  const dpr = devicePixelRatio||1;
-  canvas.width  = blockW*dpr;
-  canvas.height = blockH*dpr;
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  scaledFontSize      = base;
+  const letterW = base * 0.6;
+  const lineH = base * 1.2;
+  const pad = base * 0.8;
+  const textW = Math.max(...lines.map(l => l.length)) * letterW;
+  const textH = lines.length * lineH;
+  const blockW = textW + pad * 2;
+  const blockH = textH + pad * 2;
+  const margin = 5;
+  const scale = Math.min((innerWidth - margin*2) / blockW, (innerHeight - margin*2) / blockH);
+
+  canvas.style.width = `${blockW * scale}px`;
+  canvas.style.height = `${blockH * scale}px`;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = blockW * dpr;
+  canvas.height = blockH * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  scaledFontSize = base;
   scaledLetterSpacing = letterW;
-  scaledLineHeight    = lineH;
+  scaledLineHeight = lineH;
 }
 
-// ---- Snake Implementation ----
-function getRandomNeighbor(idx,rowLen,total) {
-  const moves=[];
-  const col = idx%rowLen;
-  if(col>0)           moves.push(idx-1);
-  if(col<rowLen-1)    moves.push(idx+1);
-  if(idx>=rowLen)     moves.push(idx-rowLen);
-  if(idx+rowLen<total)moves.push(idx+rowLen);
-  return moves.length? moves[Math.floor(Math.random()*moves.length)] : idx;
+let nextColorIndex = 0;
+function pickColor() {
+  const c = COLORS[nextColorIndex];
+  nextColorIndex = (nextColorIndex + 1) % COLORS.length;
+  return c;
 }
 
+setInterval(() => {
+  for (let i = 0; i < 3; i++) {
+    const row   = Math.floor(Math.random() * ROWS);
+    const color = pickColor();
+    const len   = 2 + Math.random() * 4;    // still small runs
+    const spd   = 150 + Math.random() * 100; // a bit faster
+    snakes.push(new Snake(row, len, color, spd));
+  }
+}, 500);
+
+
+// --------------------
+// Snake and render logic unchanged
+// --------------------
 class Snake {
-  constructor(rowLen,total,colors) {
-    this.rowLen     = rowLen;
-    this.total      = total;
-    this.colors     = colors;
-    this.colorOff   = 0;
-    this.head       = Math.floor(Math.random()*total);
-    this.trail      = [];
-    this.maxLength  = mL;
-    this.stepDelay  = 80;
-    this.lastStep   = 0;
+  constructor(row, length, color, speed) {
+    this.row = row;
+    this.length = length;
+    this.color = color;
     this.shadowColor = this.color;
-    this.shadowBlur = 10 + Math.random() * 70; // 15-25px blur
-}
-
+    this.shadowBlur = 10 + Math.random() * 70;
+    this.speed = speed;
+    this.headX = 0;
+    this.last = performance.now();
+  }
   update(now) {
-      if (now - this.lastStep < this.stepDelay) return;
-      this.lastStep = now;
+    const dt = (now - this.last) / 500;
+    this.headX += dt * this.speed;
+    this.last  = now;
 
-      // advance color cycle
-      this.colorOff = (this.colorOff + 1) % this.colors.length;
-      const next = getRandomNeighbor(this.head, this.rowLen, this.total);
+    // compute which column the head is on
+    const colIdx = Math.floor(this.headX / scaledLetterSpacing);
+    // map to the flat chars[] index
+    const charIdx = this.row * charsPerRow + colIdx;
 
-      this.head = next === -1 ? this.head : next;
-
-      // push head into trail, pop tail if too long
-      this.trail.push(this.head);
-      // after this.trail.push(this.head);
-chars[this.head].shadowBlur = this.shadowBlur;
-if (this.trail.length > this.maxLength) {
-  const tail = this.trail.shift();
-  chars[tail].chaseColor = null;
-  chars[tail].shadowBlur = 0;
-}
-
+    // if in range, stash the blur on that char
+    if (charIdx >= 0 && charIdx < chars.length) {
+      chars[charIdx].shadowBlur = this.shadowBlur;
     }
-    draw() {
-      // Color each segment of the trail:
-      this.trail.forEach((pos, i) => {
-        chars[pos].chaseColor = this.colors[(this.colorOff + i) % this.colors.length];
-      });
+
+    // mark done as before
+    if (this.headX > totalCols * scaledLetterSpacing + this.length * scaledLetterSpacing) {
+      this.done = true;
     }
   }
 
+  draw() {
+    const startIdx = Math.floor((this.headX - this.length * scaledLetterSpacing) / scaledLetterSpacing);
+    for (let i = 0; i < this.length; i++) {
+      const idx = startIdx + i;
+      if (idx >= 0 && idx < charsPerRow) {
+        // permanently color this character
+        chars[this.row * charsPerRow + idx].chaseColor = this.color;
+      }
+    }
+  }
+   }
 
-// ---- Initialization ----
-function init() {
+  function render(now) {
+    // clear to background
+    ctx.fillStyle = BG_COLOR;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // draw every character in its current color (white or taken-over)
+    ctx.font = `${scaledFontSize}px ${FONT_FAMILY}`;
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
+    chars.forEach(c => {
+      ctx.save();
+      ctx.translate(c.x,c.y);
+      // pick the fill color
+      ctx.fillStyle = c.chaseColor || TEXT_COLOR;
+
+      // if someone gave this char a shadowBlur, apply it
+      if (c.shadowBlur) {
+        ctx.shadowColor = c.chaseColor || TEXT_COLOR;
+        ctx.shadowBlur  = c.shadowBlur;
+      } else {
+        ctx.shadowBlur = 0;
+      }
+
+      ctx.fillText(c.char, 0, 0);
+      ctx.fillText(c.char, 0, 0.5);
+      ctx.restore();
+    });
+
+
+  // update & draw snakes
+  snakes = snakes.filter(s => {
+    s.update(now);
+    s.draw(ctx);
+    return !s.done;
+  });
+
+  // spawn new snake
+  if (Math.random() < 0.02) {
+    const row = Math.floor(Math.random() * ROWS);
+    const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+    snakes.push(new Snake(row, 2 + Math.random() * 4, color, 100 + Math.random() * 10));
+  }
+
+  requestAnimationFrame(render);
+}
+
+// INIT
+window.addEventListener('resize', () => {
   lines = buildText();
   resizeCanvas();
   setupChars();
-  snakes.length = 0;
-}
-window.addEventListener('resize',init);
-init();
-
-// spawn a new snake every 2s
-setInterval(()=>{
-  if (snakes.length < MAX_SNAKES) {
-    snakes.push(new Snake(lines[0].length, chars.length, COLORS));
-  }
-}, 2000);
-
-
-// ---- Render Loop ----
-function animate(now) {
-  // draw static text
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.fillStyle = BG_COLOR;
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-  ctx.textBaseline='top';
-  ctx.textAlign='left';
-  ctx.font=`${scaledFontSize}px ${FONT_FAMILY}`;
-  chars.forEach(c=>{
-    ctx.save(); ctx.translate(c.x,c.y);
-    ctx.fillStyle = c.chaseColor||TEXT_COLOR;
-    if (c.chaseColor) {
-      ctx.shadowColor = c.chaseColor;
-      ctx.shadowBlur  = c.shadowBlur || 0;
-    } else {
-      ctx.shadowBlur = 0;
-    }
-    ctx.fillText(c.char, 0, 0);
-    ctx.fillText(c.char, 0, 0.5);
-    ctx.restore();
-  });
-  // update & draw snakes
-  for(let i=snakes.length-1;i>=0;i--) {
-    const s=snakes[i]; s.update(now); s.draw();
-  }
-  requestAnimationFrame(animate);
-}
-requestAnimationFrame(animate);
+});
+lines = buildText();
+resizeCanvas();
+setupChars();
+requestAnimationFrame(render);
 
 function saveCanvasImage() {
     const exportScale = 1;
@@ -234,7 +256,7 @@ function saveCanvasImage() {
     tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
     // Draw original (non-animated) text
-    tempCtx.fillStyle = TEXT_COLOR;
+    tempCtx.fillStyle = TXT_SV_CLR;
     tempCtx.font = `${scaledFontSize}px ${FONT_FAMILY}`;
     tempCtx.textBaseline = 'top';
     tempCtx.textAlign = 'left';
@@ -279,5 +301,6 @@ function saveCanvasImage() {
     });
 })();
 </script>
+
 </body>
 </html>
