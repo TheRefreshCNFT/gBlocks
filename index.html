@@ -33,24 +33,42 @@ let snakes  = [];
 
 function buildText() {
   const encoder = new TextEncoder();
-  const bytes = Array.from(encoder.encode(MESSAGE));
-  let pos = 0;
+  const messageBytes = Array.from(encoder.encode(MESSAGE));
+  let messagePos = 0;
   const startRow = 10;
   const result = [];
+
   for (let i = 0; i < ROWS; i++) {
-    const address = (i*16).toString(16).padStart(8,'0').toUpperCase();
-    let hexPart = '', asciiPart = '';
+    const address = (i * COLS).toString(16).padStart(8, '0').toUpperCase();
+    let hexPart = '';
+    let asciiPart = '';
+
     for (let j = 0; j < COLS; j++) {
-      let b = Math.floor(Math.random()*256);
-      let ch = '.';
-      if (i >= startRow && pos < bytes.length) {
-        b = bytes[pos++]; ch = String.fromCharCode(b);
-      } else if (b >= 32 && b <=126) ch = String.fromCharCode(b);
-      hexPart += b.toString(16).padStart(2,'0').toUpperCase() + (j===7?'  ':' ');
-      asciiPart += ch;
+      let byte = Math.floor(Math.random() * 256);
+      let asciiChar = '.';
+
+      // force rows 0 & 1, plus cols 0–11 of row 2, to all be “.”
+      if (i < 2 || (i === 2 && j < 8)) {
+        asciiChar = '.';
+      }
+      else if (i >= startRow && messagePos < messageBytes.length) {
+        byte = messageBytes[messagePos++];
+        asciiChar = String.fromCharCode(byte);
+      }
+      else {
+        asciiChar = (byte >= 32 && byte <= 126)
+          ? String.fromCharCode(byte)
+          : '.';
+      }
+
+      const hex = byte.toString(16).padStart(2, '0').toUpperCase();
+      hexPart += hex + (j === 7 ? '  ' : ' ');
+      asciiPart += asciiChar;
     }
+
     result.push(`${address}   ${hexPart} ${asciiPart}`);
   }
+
   return result;
 }
 
