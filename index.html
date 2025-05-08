@@ -3,167 +3,177 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>gBlocks4 - Canvas Static + Chase</title>
+<title>gBlocks4 - Canvas Static + Random Snake Chase</title>
 <style>
-body, html { margin:0; padding:0; height:100%; overflow:hidden; background:#000000; }
-canvas { display:block; margin:auto; position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); }
+  body, html { margin:0; padding:0; height:100%; overflow:hidden; background:#000; }
+  canvas { display:block; margin:auto; position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); }
 </style>
 </head>
 <body>
-
 <canvas id="canvas"></canvas>
-
 <script>
-const TEXT_COLOR = '#000000';
-const BG_COLOR = '#ffffff';
-const FONT_FAMILY = 'monospace';
-const FONT_SIZE = 72;
-const ROWS = 20;
-const COLS = 16;
-const MESSAGE = "FOMZ likes purple orange blue and pink";
-const COLOR1 = '#ff00ff';
-const COLOR2 = '#00ffff';
-const COLOR3 = '#ffff00';
+// ---- Constants ----
+const TEXT_COLOR = '#ffffff';
+const BG_COLOR   = '#000000';
+const FONT_FAMILY= 'monospace';
+const FONT_SIZE  = 72;
+const ROWS       = 20;
+const COLS       = 16;
+const MESSAGE    = "FOMZ likes purple orange blue and pink";
+const COLORS     = ['#ff00ff','#00ffff','#ffff00'];
+const MAX_SNAKES = 8;
+const mL = 7;
 
+// ---- Canvas Setup ----
 const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-
+const ctx    = canvas.getContext('2d');
 let scaledFontSize, scaledLetterSpacing, scaledLineHeight;
-let lines = [];
-let chars = [];
-let flickerToggle = true;
+let lines   = [], chars = [];
+let snakes  = [];
 
 function buildText() {
-    const encoder = new TextEncoder();
-    const messageBytes = Array.from(encoder.encode(MESSAGE));
-    let messagePos = 0;
-    const startRow = 10;
-    let generatedLines = [];
-
-    for (let i = 0; i < ROWS; i++) {
-        const address = (i * 16).toString(16).padStart(8, '0').toUpperCase();
-        let hexPart = '';
-        let asciiPart = '';
-
-        for (let j = 0; j < COLS; j++) {
-            let byte = Math.floor(Math.random() * 256);
-            let asciiChar = '.';
-
-            if (i < 2 || (i === 2 && j < 8)) {
-                asciiChar = '.';
-            } else if (i >= startRow && messagePos < messageBytes.length) {
-                byte = messageBytes[messagePos];
-                asciiChar = String.fromCharCode(byte);
-                messagePos++;
-            } else {
-                asciiChar = (byte >= 32 && byte <= 126) ? String.fromCharCode(byte) : '.';
-            }
-
-            const hex = byte.toString(16).padStart(2, '0').toUpperCase();
-            hexPart += hex + (j === 7 ? '  ' : ' ');
-            asciiPart += asciiChar;
-        }
-
-        generatedLines.push(`${address}   ${hexPart} ${asciiPart}`);
+  const encoder = new TextEncoder();
+  const bytes = Array.from(encoder.encode(MESSAGE));
+  let pos = 0;
+  const startRow = 10;
+  const result = [];
+  for (let i = 0; i < ROWS; i++) {
+    const address = (i*16).toString(16).padStart(8,'0').toUpperCase();
+    let hexPart = '', asciiPart = '';
+    for (let j = 0; j < COLS; j++) {
+      let b = Math.floor(Math.random()*256);
+      let ch = '.';
+      if (i >= startRow && pos < bytes.length) {
+        b = bytes[pos++]; ch = String.fromCharCode(b);
+      } else if (b >= 32 && b <=126) ch = String.fromCharCode(b);
+      hexPart += b.toString(16).padStart(2,'0').toUpperCase() + (j===7?'  ':' ');
+      asciiPart += ch;
     }
-    return generatedLines;
+    result.push(`${address}   ${hexPart} ${asciiPart}`);
+  }
+  return result;
 }
 
 function setupChars() {
-    chars = [];
-    ctx.font = `${scaledFontSize}px ${FONT_FAMILY}`;
-    const padding = scaledFontSize * 0.8;
-    const startX = padding;
-    const startY = padding;
-
-    lines.forEach((line, i) => {
-        [...line].forEach((char, j) => {
-            chars.push({
-                char,
-                x: startX + j * scaledLetterSpacing,
-                y: startY + i * scaledLineHeight,
-                flickerShadow: true, // 🔥 ALL characters will flicker now
-                chaseColor: null
-            });
-        });
+  chars = [];
+  ctx.font = `${scaledFontSize}px ${FONT_FAMILY}`;
+  const pad = scaledFontSize*0.8;
+  lines.forEach((line,i) => {
+    [...line].forEach((c,j) => {
+      chars.push({ char:c, x:pad + j*scaledLetterSpacing, y:pad + i*scaledLineHeight, chaseColor:null });
     });
-}
-
-
-function flickerEffect() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = BG_COLOR;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.textBaseline = 'top';
-    ctx.textAlign = 'left';
-    ctx.font = `${scaledFontSize}px ${FONT_FAMILY}`;
-
-    chars.forEach(c => {
-        ctx.save();
-        ctx.translate(c.x, c.y);
-        ctx.fillStyle = c.chaseColor || TEXT_COLOR;
-        ctx.fillText(c.char, 0, 0);
-        ctx.restore();
-    });
-
-
-
-    const nextDelay = 25 + Math.random() * 300;
-setTimeout(flickerEffect, nextDelay);
-}
-
-function startColorChase() {
-    const colors = [COLOR1, COLOR2, COLOR3];
-    let index = 0;
-
-    setInterval(() => {
-        let start = Math.floor(Math.random() * chars.length);
-
-        for (let i = 0; i < chars.length; i++) {
-            setTimeout(() => {
-                chars[(start + i) % chars.length].chaseColor = colors[(index + i) % colors.length];
-                setTimeout(() => {
-                    chars[(start + i) % chars.length].chaseColor = null;
-                }, 200);
-            }, i * 20);
-        }
-
-        index = (index + 1) % colors.length;
-    }, 2000);
+  });
 }
 
 function resizeCanvas() {
-    const baseFontSize = FONT_SIZE;
-    const baseLetterSpacing = 0.6;
-    const baseLineHeight = 1.2;
-    const paddingRatio = 0.8;
-
-    const letterWidth = baseFontSize * baseLetterSpacing;
-    const lineHeight = baseFontSize * baseLineHeight;
-    const textBlockWidth = Math.max(...lines.map(l => l.length)) * letterWidth;
-    const textBlockHeight = lines.length * lineHeight;
-    const padding = baseFontSize * paddingRatio;
-    const blockWidth = textBlockWidth + padding * 2;
-    const blockHeight = textBlockHeight + padding * 2;
-
-    const margin = 5;
-    const availW = window.innerWidth - margin * 2;
-    const availH = window.innerHeight - margin * 2;
-    const fitScale = Math.min(availW / blockWidth, availH / blockHeight);
-    canvas.style.width = `${blockWidth * fitScale}px`;
-    canvas.style.height = `${blockHeight * fitScale}px`;
-
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = blockWidth * dpr;
-    canvas.height = blockHeight * dpr;
-
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-    scaledFontSize = baseFontSize;
-    scaledLetterSpacing = letterWidth;
-    scaledLineHeight = lineHeight;
+  const base = FONT_SIZE;
+  const letterW = base*0.6;
+  const lineH   = base*1.2;
+  const pad      = base*0.8;
+  const blockW   = Math.max(...lines.map(l=>l.length))*letterW + pad*2;
+  const blockH   = lines.length*lineH + pad*2;
+  const margin   = 5;
+  const scale    = Math.min((innerWidth-margin*2)/blockW,(innerHeight-margin*2)/blockH);
+  canvas.style.width  = `${blockW*scale}px`;
+  canvas.style.height = `${blockH*scale}px`;
+  const dpr = devicePixelRatio||1;
+  canvas.width  = blockW*dpr;
+  canvas.height = blockH*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  scaledFontSize      = base;
+  scaledLetterSpacing = letterW;
+  scaledLineHeight    = lineH;
 }
+
+// ---- Snake Implementation ----
+function getRandomNeighbor(idx,rowLen,total) {
+  const moves=[];
+  const col = idx%rowLen;
+  if(col>0)           moves.push(idx-1);
+  if(col<rowLen-1)    moves.push(idx+1);
+  if(idx>=rowLen)     moves.push(idx-rowLen);
+  if(idx+rowLen<total)moves.push(idx+rowLen);
+  return moves.length? moves[Math.floor(Math.random()*moves.length)] : idx;
+}
+
+class Snake {
+  constructor(rowLen,total,colors) {
+    this.rowLen     = rowLen;
+    this.total      = total;
+    this.colors     = colors;
+    this.colorOff   = 0;
+    this.head       = Math.floor(Math.random()*total);
+    this.trail      = [];
+    this.maxLength  = mL;
+    this.stepDelay  = 80;
+    this.lastStep   = 0;
+  }
+  update(now) {
+      if (now - this.lastStep < this.stepDelay) return;
+      this.lastStep = now;
+
+      // advance color cycle
+      this.colorOff = (this.colorOff + 1) % this.colors.length;
+      const next = getRandomNeighbor(this.head, this.rowLen, this.total);
+
+      this.head = next === -1 ? this.head : next;
+
+      // push head into trail, pop tail if too long
+      this.trail.push(this.head);
+      if (this.trail.length > this.maxLength) {
+        const tail = this.trail.shift();
+        chars[tail].chaseColor = null;
+      }
+    }
+    draw() {
+      // Color each segment of the trail:
+      this.trail.forEach((pos, i) => {
+        chars[pos].chaseColor = this.colors[(this.colorOff + i) % this.colors.length];
+      });
+    }
+  }
+
+
+// ---- Initialization ----
+function init() {
+  lines = buildText();
+  resizeCanvas();
+  setupChars();
+  snakes.length = 0;
+}
+window.addEventListener('resize',init);
+init();
+
+// spawn a new snake every 2s
+setInterval(()=>{
+  if (snakes.length < MAX_SNAKES) {
+    snakes.push(new Snake(lines[0].length, chars.length, COLORS));
+  }
+}, 2000);
+
+
+// ---- Render Loop ----
+function animate(now) {
+  // draw static text
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = BG_COLOR;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.textBaseline='top';
+  ctx.textAlign='left';
+  ctx.font=`${scaledFontSize}px ${FONT_FAMILY}`;
+  chars.forEach(c=>{
+    ctx.save(); ctx.translate(c.x,c.y);
+    ctx.fillStyle = c.chaseColor||TEXT_COLOR;
+    ctx.fillText(c.char,0,0);
+    ctx.restore();
+  });
+  // update & draw snakes
+  for(let i=snakes.length-1;i>=0;i--) {
+    const s=snakes[i]; s.update(now); s.draw();
+  }
+  requestAnimationFrame(animate);
+}
+requestAnimationFrame(animate);
 
 function saveCanvasImage() {
     const exportScale = 1;
@@ -178,15 +188,20 @@ function saveCanvasImage() {
     const pixelBlockWidth = blockWidth * dpr;
     const pixelBlockHeight = blockHeight * dpr;
 
+    // Create a new blank temp canvas
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = pixelBlockWidth * exportScale;
     tempCanvas.height = pixelBlockHeight * exportScale;
     const tempCtx = tempCanvas.getContext('2d');
 
+    // Set high quality rendering
     tempCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    // Draw clean background
     tempCtx.fillStyle = BG_COLOR;
     tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
+    // Draw original (non-animated) text
     tempCtx.fillStyle = TEXT_COLOR;
     tempCtx.font = `${scaledFontSize}px ${FONT_FAMILY}`;
     tempCtx.textBaseline = 'top';
@@ -203,6 +218,7 @@ function saveCanvasImage() {
         });
     });
 
+    // Trigger download
     const link = document.createElement('a');
     link.href = tempCanvas.toDataURL('image/png');
     link.download = 'gBlocks.png';
@@ -230,20 +246,6 @@ function saveCanvasImage() {
         }, 300);
     });
 })();
-
-// INIT
-window.addEventListener('resize', () => {
-    lines = buildText();
-    resizeCanvas();
-    setupChars();
-});
-
-lines = buildText();
-resizeCanvas();
-setupChars();
-setTimeout(flickerEffect, 400);
-setTimeout(startColorChase, 500);
 </script>
-
 </body>
 </html>
