@@ -117,10 +117,10 @@ function startColorChase() {
                 setTimeout(() => {
                     chars[idx].chaseColor = null;
                 }, 200);
-            }, i * 20);
+            }, i * 30);
         }
         index = (index + 1) % colors.length;
-    }, 2000);
+    }, 4000);
 }
 
 function resizeCanvas() {
