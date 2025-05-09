@@ -130,8 +130,8 @@ function resizeCanvas() {
 function setupParticles() {
   const now = performance.now();
   // give each column its own random delay & duration:
-  const colDelays = Array.from({length:charsPerRow}, () => Math.random()*800);
-  const colDurs   = Array.from({length:charsPerRow}, () => 800 + Math.random()*600);
+  const colDelays = Array.from({length:charsPerRow}, () => Math.random()*2000);
+  const colDurs   = Array.from({length:charsPerRow}, () => 1500 + Math.random()*1300);
 
   particles = chars.map((c,i) => {
     const col = i % charsPerRow;
