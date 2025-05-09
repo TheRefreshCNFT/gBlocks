@@ -1,224 +1,160 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>gBlocks4 - Canvas Static Version</title>
-<style>
-body, html { margin:0; padding:0; height:100%; overflow:hidden; background:#000000; }
-canvas { display:block; margin:auto; position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>gBlocks4 - Canvas Fade‑In</title>
+  <style>
+    body, html { margin:0; padding:0; height:100%; overflow:hidden; background:#000000; }
+    canvas { display:block; margin:auto; position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); }
+  </style>
 </head>
 <body>
 
 <canvas id="canvas"></canvas>
 
 <script>
-const TEXT_COLOR = '#000000';
-const BG_COLOR = '#ffffff';
-const FONT_FAMILY = 'monospace';
-const FONT_SIZE = 72;
-const ROWS = 20;
-const COLS = 16;
-const MESSAGE = "FOMZ likes purple orange blue and pink";
-const ua = navigator.userAgent || navigator.vendor || window.opera;
+const TEXT_COLOR   = '#000000';
+const BG_COLOR     = '#ffffff';
+const FONT_FAMILY  = 'monospace';
+const FONT_SIZE    = 72;
+const ROWS         = 20;
+const COLS         = 16;
+const MESSAGE      = "FOMZ likes purple orange blue and pink";
 
 const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
+const ctx    = canvas.getContext('2d');
 
 let scaledFontSize, scaledLetterSpacing, scaledLineHeight;
 let lines = [];
+const chars = [];  // { char, x0, y0, delay, dur, start }
 
+// 1) Build the text block exactly as before
 function buildText() {
-    const encoder = new TextEncoder();
-    const messageBytes = Array.from(encoder.encode(MESSAGE));
-    let messagePos = 0;
-    const startRow = 10;
-    let generatedLines = [];
+  const encoder      = new TextEncoder();
+  const messageBytes = Array.from(encoder.encode(MESSAGE));
+  let messagePos     = 0;
+  const startRow     = 10;
+  const result       = [];
 
-    for (let i = 0; i < ROWS; i++) {
-        const address = (i * 16).toString(16).padStart(8, '0').toUpperCase();
-        let hexPart = '';
-        let asciiPart = '';
-
-        for (let j = 0; j < COLS; j++) {
-            let byte = Math.floor(Math.random() * 256);
-            let asciiChar = '.';
-
-            if (i < 2 || (i === 2 && j < 8)) {
-                asciiChar = '.';
-            } else if (i >= startRow && messagePos < messageBytes.length) {
-                byte = messageBytes[messagePos];
-                asciiChar = String.fromCharCode(byte);
-                messagePos++;
-            } else {
-                asciiChar = (byte >= 32 && byte <= 126) ? String.fromCharCode(byte) : '.';
-            }
-
-            const hex = byte.toString(16).padStart(2, '0').toUpperCase();
-            hexPart += hex + (j === 7 ? '  ' : ' ');
-            asciiPart += asciiChar;
-        }
-
-        generatedLines.push(`${address}   ${hexPart} ${asciiPart}`);
+  for (let i = 0; i < ROWS; i++) {
+    const address = (i * COLS).toString(16).padStart(8,'0').toUpperCase();
+    let hexPart   = '', asciiPart = '';
+    for (let j = 0; j < COLS; j++) {
+      let byte     = Math.floor(Math.random()*256);
+      let ch       = '.';
+      if (i < 2 || (i === 2 && j < 8)) {
+        ch = '.';
+      } else if (i >= startRow && messagePos < messageBytes.length) {
+        byte = messageBytes[messagePos++];
+        ch   = String.fromCharCode(byte);
+      } else {
+        ch = (byte >= 32 && byte <= 126) ? String.fromCharCode(byte) : '.';
+      }
+      hexPart   += byte.toString(16).padStart(2,'0').toUpperCase() + (j===7?'  ':' ');
+      asciiPart += ch;
     }
-    return generatedLines;
+    result.push(`${address}   ${hexPart} ${asciiPart}`);
+  }
+  return result;
 }
 
-function drawStaticText() {
-    ctx.fillStyle = BG_COLOR;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.fillStyle = TEXT_COLOR;
-    ctx.font = `${scaledFontSize}px ${FONT_FAMILY}`;
-    ctx.textBaseline = 'top';
-    ctx.textAlign = 'left';
-
-    const padding = scaledFontSize * 0.8;
-    const startX = padding;
-    const startY = padding;
-
-    lines.forEach((line, i) => {
-        [...line].forEach((char, j) => {
-            const x = startX + j * scaledLetterSpacing;
-            const y = startY + i * scaledLineHeight;
-            ctx.fillText(char, x, y);
-        });
-    });
-}
-
+// 2) Measure & scale the canvas exactly as before
 function resizeCanvas() {
-    const baseFontSize = FONT_SIZE;
-    const baseLetterSpacing = 0.6;
-    const baseLineHeight = 1.2;
-    const paddingRatio = 0.8;
+  const base          = FONT_SIZE;
+  const letterW       = base * 0.6;
+  const lineH         = base * 1.2;
+  const pad           = base * 0.8;
+  const textW         = Math.max(...lines.map(l => l.length)) * letterW;
+  const textH         = lines.length * lineH;
+  const blockW        = textW + pad*2;
+  const blockH        = textH + pad*2;
+  const margin        = 5;
+  const scale         = Math.min((innerWidth-margin*2)/blockW, (innerHeight-margin*2)/blockH);
+  canvas.style.width  = `${blockW*scale}px`;
+  canvas.style.height = `${blockH*scale}px`;
 
-    const letterWidth = baseFontSize * baseLetterSpacing;
-    const lineHeight = baseFontSize * baseLineHeight;
-    const textBlockWidth = Math.max(...lines.map(l => l.length)) * letterWidth;
-    const textBlockHeight = lines.length * lineHeight;
-    const padding = baseFontSize * paddingRatio;
-    const blockWidth = textBlockWidth + padding * 2;
-    const blockHeight = textBlockHeight + padding * 2;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width  = blockW * dpr;
+  canvas.height = blockH * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    const margin = 5;
-    const availW = window.innerWidth - margin * 2;
-    const availH = window.innerHeight - margin * 2;
-    const fitScale = Math.min(availW / blockWidth, availH / blockHeight);
-    canvas.style.width = `${blockWidth * fitScale}px`;
-    canvas.style.height = `${blockHeight * fitScale}px`;
-
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = blockWidth * dpr;
-    canvas.height = blockHeight * dpr;
-
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-    scaledFontSize = baseFontSize;
-    scaledLetterSpacing = letterWidth;
-    scaledLineHeight = lineHeight;
+  scaledFontSize      = base;
+  scaledLetterSpacing = letterW;
+  scaledLineHeight    = lineH;
 }
 
-const chars = [];        // will hold {char, x0,y0, dx,dy, rot0, delay, dur, fadeDur, start}
-
+// 3) Prepare each character with its own random fade‑in timing
 function setupCharAnims() {
-  const diag = Math.hypot(canvas.width, canvas.height);
-  const padding = scaledFontSize * 0.8;
-  const startX = padding, startY = padding;
+  const pad    = scaledFontSize * 0.8;
+  const startX = pad, startY = pad;
+  const t0     = performance.now();
 
-  let t0 = performance.now();
   chars.length = 0;
-
   lines.forEach((line, row) => {
     [...line].forEach((ch, col) => {
-      const x0 = startX + col * scaledLetterSpacing;
-      const y0 = startY + row * scaledLineHeight;
-      const theta = Math.random() * 2 * Math.PI;
-      const d = diag/2 + Math.random()*diag/2;
-      const dx = d * Math.cos(theta), dy = d * Math.sin(theta);
-      const rot0 = (Math.random()*720 - 360) * Math.PI/180;
       chars.push({
-        char: ch,
-        x0, y0, dx, dy, rot0,
-        delay: Math.random()*400,               // 0–0.4 s
-        dur: 900 + Math.random()*200,        // 0.8–1.6 s
-        fadeDur: 500,                           // 0.5 s
+        char:  ch,
+        x0:    startX + col * scaledLetterSpacing,
+        y0:    startY + row * scaledLineHeight,
+        delay: Math.random() * 400,          // 0–400 ms random delay
+        dur:   500 + Math.random() * 200,    // 500–700 ms fade duration
         start: t0
       });
     });
   });
 }
 
-////////////////////////////////////////////////////////
-// 2) Cubic‐bezier easing (0.22,1,0.36,1) approximation:
-////////////////////////////////////////////////////////
-function easeBezier(p) {
-  // y‑only, both control‑points have y=1
-  // E(p) = 3(1−p)² p ·1 + 3(1−p) p² ·1 + p³
-  return 3*(1-p)*(1-p)*p + 3*(1-p)*p*p + p*p*p;
-}
-
-////////////////////////////////////////////////////////
-// 3) The master animation loop:
-////////////////////////////////////////////////////////
+// 4) Animation: clear → draw background → draw each char at its x0/y0 with alpha
 function animateFadeIn(now) {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = BG_COLOR;
-  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.font         = `${scaledFontSize}px ${FONT_FAMILY}`;
+  ctx.textBaseline = 'top';
+  ctx.textAlign    = 'left';
 
   let allDone = true;
-  chars.forEach(a => {
+  for (const a of chars) {
     const t = now - a.start;
     if (t < a.delay) {
       allDone = false;
-      return;    // not yet visible
+      continue;
     }
-
     const tt = t - a.delay;
-    // compute eased progress, but clamp at 1
-    const tclamped = Math.min(tt, a.dur);
-    const p = tclamped / a.dur;
-    const e = easeBezier(p);
-
-    // position, rotation, alpha all track e exactly
-    const x     = a.x0 + a.dx * (1 - e);
-    const y     = a.y0 + a.dy * (1 - e);
-    const rot   = a.rot0 * (1 - e);
-    const alpha = e;
-
-    if (tclamped < a.dur) allDone = false;
-
-    // draw this char
+    let alpha;
+    if (tt < a.dur) {
+      allDone = false;
+      alpha = tt / a.dur;
+    } else {
+      alpha = 1;
+    }
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.translate(x, y);
-    ctx.rotate(rot);
-    ctx.fillStyle = TEXT_COLOR;
-    ctx.fillText(a.char, 0, 0);
+    ctx.fillStyle   = TEXT_COLOR;
+    ctx.fillText(a.char, a.x0, a.y0);
     ctx.restore();
-  });
+  }
 
   if (!allDone) {
     requestAnimationFrame(animateFadeIn);
   }
 }
-////////////////////////////////////////////////////////
-// 4) Kick it all off on load / resize
-////////////////////////////////////////////////////////
+
+// 5) Hook it all up on resize & initial load
 window.addEventListener('resize', () => {
   lines = buildText();
   resizeCanvas();
-  // rebuild chars & start animation
   setupCharAnims();
   requestAnimationFrame(animateFadeIn);
 });
 
-// initial launch
+// first time
 lines = buildText();
 resizeCanvas();
 setupCharAnims();
 requestAnimationFrame(animateFadeIn);
-
 
 function saveCanvasImage() {
     const exportScale = 1;
@@ -291,6 +227,13 @@ function saveCanvasImage() {
         }, 300);
     });
 })();
+</script>
+
+</body>
+</html>
+
+
+
 
 // INIT
 window.addEventListener('resize', () => {
