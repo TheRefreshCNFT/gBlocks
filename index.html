@@ -14,21 +14,22 @@
 <canvas id="canvas"></canvas>
 
 <script>
-const TEXT_COLOR    = '#000000';
-const BG_COLOR      = '#ffffff';
-const FONT_FAMILY   = 'monospace';
-const FONT_SIZE     = 72;
-const ROWS          = 20;
-const COLS          = 16;
-const MESSAGE       = "FOMZ likes purple orange blue and pink";
+const TEXT_COLOR  = '#16f80e';
+const BG_COLOR    = '#000000';
+const FONT_FAMILY = 'monospace';
+const FONT_SIZE   = 72;
+const ROWS        = 20;
+const COLS        = 16;
+const MESSAGE     = "Take the red pill or the blue pill";
 
 const canvas = document.getElementById('canvas');
 const ctx    = canvas.getContext('2d');
 
 let scaledFontSize, scaledLetterSpacing, scaledLineHeight;
 let lines    = [];
+let chars    = [];
+let charsPerRow, totalCols;
 let particles = [];
-const chars = [];  // { char, x0, y0, delay, dur, start }
 
 // 1) Build the text block exactly as before
 function buildText() {
@@ -59,6 +60,25 @@ function buildText() {
   }
   return result;
 }
+
+function setupChars() {
+  chars = [];
+  ctx.font = `${scaledFontSize}px ${FONT_FAMILY}`;
+  const pad = scaledFontSize * 0.8;
+  lines.forEach((line, row) => {
+    [...line].forEach((c, col) => {
+      chars.push({
+        char: c,
+        x: pad + col * scaledLetterSpacing,
+        y: pad + row * scaledLineHeight,
+        chaseColor: null
+      });
+    });
+  });
+  charsPerRow = lines[0].length;
+  totalCols   = charsPerRow;
+}
+
 
 function drawStaticText() {
     ctx.fillStyle = BG_COLOR;
@@ -108,39 +128,37 @@ function resizeCanvas() {
 }
 
 function setupParticles() {
-  particles = [];
-  const padding = scaledFontSize * 0.8;
-  const diag    = Math.hypot(window.innerWidth, window.innerHeight);
+  const now = performance.now();
+  // give each column its own random delay & duration:
+  const colDelays = Array.from({length:charsPerRow}, () => Math.random()*800);
+  const colDurs   = Array.from({length:charsPerRow}, () => 800 + Math.random()*600);
 
-  lines.forEach((line, rowIdx) => {
-    // per‑row base delay and duration
-    const baseDelay    = (ROWS - rowIdx) * 0.1 * 1000; // ms
-    const fallDuration = 1200 + Math.random() * 500;   // ms
-
-    [...line].forEach((char, colIdx) => {
-      const xDest = padding + colIdx * scaledLetterSpacing;
-      const yDest = padding + rowIdx * scaledLineHeight;
-      const x0    = xDest + (Math.random() - 0.5) * 200;
-      const y0    = -diag * 0.5 - Math.random() * diag * 0.5;
-      const delay = baseDelay + Math.random() * 100;   // jitter
-
-      particles.push({
-        char, x0, y0, xDest, yDest,
-        delay, dur: fallDuration,
-        start: performance.now()
-      });
-    });
+  particles = chars.map((c,i) => {
+    const col = i % charsPerRow;
+    return {
+      char:  c.char,
+      x0:    c.x,                             // start exactly above its static X
+      y0:    c.y - (scaledLineHeight*ROWS),   // way off the top
+      xDest: c.x,                             // drop to its static X
+      yDest: c.y,                             // drop to its static Y
+      delay: colDelays[col],
+      dur:   colDurs[col],
+      start: now,
+      done:  false
+    };
   });
 }
 
-function animateFalling(now) {
+// the render loop—clear, draw each particle falling & flickering, finish with crisp text
+function animateColumns(now) {
+  // clear to background
   ctx.fillStyle = BG_COLOR;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  ctx.fillStyle     = TEXT_COLOR;
-  ctx.font           = `${scaledFontSize}px ${FONT_FAMILY}`;
-  ctx.textBaseline   = 'top';
-  ctx.textAlign      = 'left';
+  // text settings
+  ctx.font         = `${scaledFontSize}px ${FONT_FAMILY}`;
+  ctx.textBaseline = 'top';
+  ctx.textAlign    = 'left';
 
   let allDone = true;
 
@@ -148,42 +166,50 @@ function animateFalling(now) {
     const t = now - p.start;
     if (t < p.delay) {
       allDone = false;
-      return; // not yet started
+      return;
     }
     const tt = Math.min((t - p.delay) / p.dur, 1);
     if (tt < 1) allDone = false;
+    else        p.done = true;
 
-    // ease‑out cubic
+    // ease‐out cubic
     const e = 1 - Math.pow(1 - tt, 3);
 
     const x = p.x0 + (p.xDest - p.x0) * e;
     const y = p.y0 + (p.yDest - p.y0) * e;
 
+    // while falling, flicker fully on/off
+    const alpha = p.done
+      ? 1
+      : (Math.random() < 0.5 ? 0 : 1);
+
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle   = TEXT_COLOR;
     ctx.fillText(p.char, x, y);
   });
 
+  ctx.globalAlpha = 1;
+
   if (!allDone) {
-    requestAnimationFrame(animateFalling);
+    requestAnimationFrame(animateColumns);
   } else {
-    // once complete, draw crisp static text
+    // once every particle’s done, draw the final crisp block
     drawStaticText();
   }
 }
 
-// --- wire it all up ---
-
-window.addEventListener('resize', () => {
+// kick everything off, and re‐init on resize
+function initAll() {
   lines = buildText();
   resizeCanvas();
+  setupChars();      // fills `chars[]` with x,y positions
   drawStaticText();
-  setupParticles();
-});
+  setupParticles();  // builds `particles[]` from those exact x,y’s
+  requestAnimationFrame(animateColumns);
+}
 
-lines = buildText();
-resizeCanvas();
-drawStaticText();
-setupParticles();
-requestAnimationFrame(animateFalling);
+window.addEventListener('resize', initAll);
+initAll();
 
 function saveCanvasImage() {
     const exportScale = 1;
