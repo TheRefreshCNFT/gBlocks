@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>gBlocks4 - Canvas Fade‑In</title>
+  <title>gBlocks4 - Canvas Fade‑In + Endless Column Replacement</title>
   <style>
     body, html { margin:0; padding:0; height:100%; overflow:hidden; background:#000000; }
     canvas { display:block; margin:auto; position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); }
@@ -30,8 +30,9 @@ let lines    = [];
 let chars    = [];
 let charsPerRow, totalCols;
 let particles = [];
+let replacementStarted = false;
 
-// 1) Build the text block exactly as before
+// 1) Build text block
 function buildText() {
   const encoder      = new TextEncoder();
   const messageBytes = Array.from(encoder.encode(MESSAGE));
@@ -43,8 +44,8 @@ function buildText() {
     const address = (i * COLS).toString(16).padStart(8,'0').toUpperCase();
     let hexPart   = '', asciiPart = '';
     for (let j = 0; j < COLS; j++) {
-      let byte     = Math.floor(Math.random()*256);
-      let ch       = '.';
+      let byte = Math.floor(Math.random()*256);
+      let ch   = '.';
       if (i < 2 || (i === 2 && j < 8)) {
         ch = '.';
       } else if (i >= startRow && messagePos < messageBytes.length) {
@@ -61,6 +62,7 @@ function buildText() {
   return result;
 }
 
+// 2) Map each character to an x/y on canvas
 function setupChars() {
   chars = [];
   ctx.font = `${scaledFontSize}px ${FONT_FAMILY}`;
@@ -70,8 +72,7 @@ function setupChars() {
       chars.push({
         char: c,
         x: pad + col * scaledLetterSpacing,
-        y: pad + row * scaledLineHeight,
-        chaseColor: null
+        y: pad + row * scaledLineHeight
       });
     });
   });
@@ -79,68 +80,57 @@ function setupChars() {
   totalCols   = charsPerRow;
 }
 
-
+// 3) Draw final crisp text block
 function drawStaticText() {
-    ctx.fillStyle = BG_COLOR;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.fillStyle = TEXT_COLOR;
-    ctx.font = `${scaledFontSize}px ${FONT_FAMILY}`;
-    ctx.textBaseline = 'top';
-    ctx.textAlign = 'left';
-
-    const padding = scaledFontSize * 0.8;
-    const startX = padding;
-    const startY = padding;
-
-    lines.forEach((line, i) => {
-        [...line].forEach((char, j) => {
-            const x = startX + j * scaledLetterSpacing;
-            const y = startY + i * scaledLineHeight;
-            ctx.fillText(char, x, y);
-        });
-    });
+  ctx.fillStyle = BG_COLOR;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = TEXT_COLOR;
+  ctx.font = `${scaledFontSize}px ${FONT_FAMILY}`;
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'left';
+  chars.forEach(c => {
+    ctx.fillText(c.char, c.x, c.y);
+  });
 }
 
-// 2) Measure & scale the canvas exactly as before
+// 4) Resize & compute spacing
 function resizeCanvas() {
-  const base          = FONT_SIZE;
-  const letterW       = base * 0.6;
-  const lineH         = base * 1.2;
-  const pad           = base * 0.8;
-  const textW         = Math.max(...lines.map(l => l.length)) * letterW;
-  const textH         = lines.length * lineH;
-  const blockW        = textW + pad*2;
-  const blockH        = textH + pad*2;
-  const margin        = 5;
-  const scale         = Math.min((innerWidth-margin*2)/blockW, (innerHeight-margin*2)/blockH);
+  const base    = FONT_SIZE;
+  const letterW = base * 0.6;
+  const lineH   = base * 1.2;
+  const pad     = base * 0.8;
+  const textW   = Math.max(...lines.map(l=>l.length)) * letterW;
+  const textH   = lines.length * lineH;
+  const blockW  = textW + pad*2;
+  const blockH  = textH + pad*2;
+  const margin  = 5;
+  const scale   = Math.min((innerWidth-margin*2)/blockW, (innerHeight-margin*2)/blockH);
+
   canvas.style.width  = `${blockW*scale}px`;
   canvas.style.height = `${blockH*scale}px`;
-
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width  = blockW * dpr;
-  canvas.height = blockH * dpr;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const dpr = devicePixelRatio||1;
+  canvas.width  = blockW*dpr;
+  canvas.height = blockH*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
 
   scaledFontSize      = base;
   scaledLetterSpacing = letterW;
   scaledLineHeight    = lineH;
 }
 
+// 5) Set up the initial “falling columns” load animation
 function setupParticles() {
   const now = performance.now();
-  // give each column its own random delay & duration:
-  const colDelays = Array.from({length:charsPerRow}, () => Math.random()*2000);
-  const colDurs   = Array.from({length:charsPerRow}, () => 1500 + Math.random()*1300);
-
-  particles = chars.map((c,i) => {
+  const colDelays = Array.from({length:charsPerRow}, ()=>Math.random()*2000);
+  const colDurs   = Array.from({length:charsPerRow}, ()=>1500+Math.random()*1300);
+  particles = chars.map((c,i)=>{
     const col = i % charsPerRow;
     return {
       char:  c.char,
-      x0:    c.x,                             // start exactly above its static X
-      y0:    c.y - (scaledLineHeight*ROWS),   // way off the top
-      xDest: c.x,                             // drop to its static X
-      yDest: c.y,                             // drop to its static Y
+      x0:    c.x,
+      y0:    c.y - scaledLineHeight*ROWS,
+      xDest: c.x,
+      yDest: c.y,
       delay: colDelays[col],
       dur:   colDurs[col],
       start: now,
@@ -149,65 +139,148 @@ function setupParticles() {
   });
 }
 
-// the render loop—clear, draw each particle falling & flickering, finish with crisp text
+// 6) Animate the load
 function animateColumns(now) {
-  // clear to background
   ctx.fillStyle = BG_COLOR;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // text settings
-  ctx.font         = `${scaledFontSize}px ${FONT_FAMILY}`;
-  ctx.textBaseline = 'top';
-  ctx.textAlign    = 'left';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.font = `${scaledFontSize}px ${FONT_FAMILY}`;
+  ctx.textBaseline = 'top'; ctx.textAlign = 'left';
 
   let allDone = true;
-
-  particles.forEach(p => {
+  particles.forEach(p=>{
     const t = now - p.start;
-    if (t < p.delay) {
-      allDone = false;
-      return;
-    }
-    const tt = Math.min((t - p.delay) / p.dur, 1);
-    if (tt < 1) allDone = false;
-    else        p.done = true;
-
-    // ease‐out cubic
-    const e = 1 - Math.pow(1 - tt, 3);
-
-    const x = p.x0 + (p.xDest - p.x0) * e;
-    const y = p.y0 + (p.yDest - p.y0) * e;
-
-    // while falling, flicker fully on/off
-    const alpha = p.done
-      ? 1
-      : (Math.random() < 0.5 ? 0 : 1);
-
+    if (t < p.delay) { allDone = false; return; }
+    const tt = Math.min((t-p.delay)/p.dur,1);
+    if (tt<1) allDone = false; else p.done = true;
+    const e = 1 - Math.pow(1-tt,3);
+    const x = p.x0 + (p.xDest-p.x0)*e;
+    const y = p.y0 + (p.yDest-p.y0)*e;
+    const alpha = p.done ? 1 : (Math.random()<0.65?0:1);
     ctx.globalAlpha = alpha;
     ctx.fillStyle   = TEXT_COLOR;
     ctx.fillText(p.char, x, y);
   });
-
   ctx.globalAlpha = 1;
 
   if (!allDone) {
     requestAnimationFrame(animateColumns);
   } else {
-    // once every particle’s done, draw the final crisp block
     drawStaticText();
+    if (!replacementStarted) {
+      replacementStarted = true;
+      startReplacementCycle();
+    }
   }
 }
 
-// kick everything off, and re‐init on resize
+// 7) Column‑replacement cycle
+function startReplacementCycle() {
+  (function cycle(){
+    // generate new block & map its chars
+    const newLines = buildText();
+    const newChars = [];
+    const pad = scaledFontSize*0.8;
+    newLines.forEach((line,row)=>{
+      [...line].forEach((ch,col)=>{
+        const x = pad + col*scaledLetterSpacing;
+        const y = pad + row*scaledLineHeight;
+        newChars.push({ char: ch, x, y });
+      });
+    });
+
+    // pick 3–5 random columns
+    const count = 5 + Math.floor(Math.random()*16);
+    const cols = [];
+    while (cols.length < count) {
+      const c = Math.floor(Math.random()*charsPerRow);
+      if (!cols.includes(c)) cols.push(c);
+    }
+
+    // when all finish, start next cycle
+    let doneCols = 0;
+    cols.forEach((col, i) => {
+      const colDelay = Math.random() * 3000; // or more/less for effect
+      setTimeout(() => {
+        replaceColumn(col, newChars, () => {
+          doneCols++;
+          if (doneCols === cols.length) {
+            setTimeout(cycle, 500 + Math.random() * 1500);
+          }
+        });
+      }, colDelay);
+    });
+
+  })();
+}
+
+// 8) Replace one column by “dropping” its new chars with flicker
+function replaceColumn(col, newChars, onDone) {
+  // per-row delays & durations
+  const delays = Array.from({ length: ROWS }, () => Math.random() * 30);
+  const durs   = Array.from({ length: ROWS }, () => 600 + Math.random() * 1200);
+
+  let completed = 0;
+
+  for (let row = 0; row < ROWS; row++) {
+    const idx   = row * charsPerRow + col;
+    const dest  = chars[idx];      // old char { x, y, char }
+    const nc    = newChars[idx];   // new char { char, x, y }
+    const delay = delays[row];
+    const dur   = durs[row];
+
+    setTimeout(() => {
+      const start = performance.now();
+      // initial "previous" y is well above
+      let prevY = dest.y - scaledLineHeight * ROWS;
+
+      function step(now) {
+        const t  = now - start;
+        const tt = Math.min(t / dur, 1);
+        const e  = 1 - Math.pow(1 - tt, 10);
+
+        // compute drop position
+        const dropY = dest.y - (scaledLineHeight * ROWS) * (1 - e);
+
+        // clear _only_ the last drop frame
+        ctx.clearRect(dest.x, prevY, scaledLetterSpacing, scaledLineHeight);
+
+        // flicker alpha
+        ctx.globalAlpha = tt === 1 ? 1 : (Math.random() < 0.5 ? 0 : 1);
+        ctx.fillStyle   = TEXT_COLOR;
+        ctx.fillText(nc.char, dest.x, dropY);
+        ctx.globalAlpha = 1;
+
+        prevY = dropY;
+
+        if (tt < 1) {
+          requestAnimationFrame(step);
+        } else {
+          // final: erase old static char, draw new one in place
+          ctx.clearRect(dest.x, dest.y, scaledLetterSpacing, scaledLineHeight);
+          ctx.fillText(nc.char, dest.x, dest.y);
+
+          // update our array so future drawStaticText uses the new char
+          chars[idx].char = nc.char;
+
+          completed++;
+          if (completed === ROWS) onDone();
+        }
+      }
+
+      requestAnimationFrame(step);
+    }, delay);
+  }
+}
+
+// 9) Init everything
 function initAll() {
   lines = buildText();
   resizeCanvas();
-  setupChars();      // fills `chars[]` with x,y positions
+  setupChars();
   drawStaticText();
-  setupParticles();  // builds `particles[]` from those exact x,y’s
+  setupParticles();
   requestAnimationFrame(animateColumns);
 }
-
 window.addEventListener('resize', initAll);
 initAll();
 
@@ -283,6 +356,5 @@ function saveCanvasImage() {
     });
 })();
 </script>
-
 </body>
 </html>
