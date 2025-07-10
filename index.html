@@ -267,7 +267,7 @@ function animateColumns(now) {
     if (t < p.delay) { allDone = false; return; }
     const tt = Math.min((t - p.delay) / p.dur, 1);
     if (tt < 1) allDone = false;
-    const e = 1 - Math.pow(1 - tt, 5);
+    const e = 1 - Math.pow(1 - tt, 3);
     const x = p.x0 + (p.xDest - p.x0) * e;
     const y = p.y0 + (p.yDest - p.y0) * e;
 
