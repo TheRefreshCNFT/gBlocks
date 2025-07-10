@@ -395,17 +395,19 @@ function replaceColumn(col, newChars, onDone) {
         // compute drop position
         const dropY = dest.y0 - (scaledLineHeight * ROWS) * (1 - e);
 
-        // clear _only_ the last drop frame
-// draw a faint trail with the same glow color
-ctx.save();
-ctx.fillStyle = BG_COLOR;
-ctx.globalAlpha = 0.2;      // or TEXT_COLOR, or whatever “fill” you prefer
-ctx.fillRect(dest.x0, prevY, scaledLetterSpacing, scaledLineHeight);
+        // clear/fade the entire path between prevY and dropY, ensures always top→bottom
+        const topY = Math.min(prevY, dropY);
+        const height = Math.abs(dropY - prevY) + scaledLineHeight;
+        ctx.save();
+        ctx.fillStyle = BG_COLOR;
+        ctx.globalAlpha = 0.2;
+        ctx.fillRect(dest.x0, topY, scaledLetterSpacing, height);
 
-ctx.fillStyle = TEXT_COLOR;
-ctx.globalAlpha = 0.3;
-ctx.fillRect(dest.x0, prevY, scaledLetterSpacing, scaledLineHeight);
-ctx.restore();
+        ctx.fillStyle = TEXT_COLOR;
+        ctx.globalAlpha = 0.3;
+        ctx.fillRect(dest.x0, topY, scaledLetterSpacing, height);
+        ctx.restore();
+
 ctx.shadowColor = TEXT_COLOR;
   ctx.shadowBlur = e * 70;
 
