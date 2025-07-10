@@ -356,16 +356,16 @@ while (cols.length < count && cols.length < visibleColumns.length) {
 let dly, dur1, dur2;
 if (os === 'android') {
   dly = 800;
-  dur1 = 1100;
-  dur2 = 1350;
+  dur1 = 700;
+  dur2 = 1000;
 } else if (os === 'ios') {
-  dly = 1100;
-  dur1 = 1400;
-  dur2 = 1650;
+  dly = 550;
+  dur1 = 1100;
+  dur2 = 1500;
 } else {
   dly = 550;
-  dur1 = 850;
-  dur2 = 1100;
+  dur1 = 1100;
+  dur2 = 1500;
 }
 // 8) Replace one column by “dropping” its new chars with flicker
 function replaceColumn(col, newChars, onDone) {
