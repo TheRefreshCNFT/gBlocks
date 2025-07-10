@@ -404,7 +404,7 @@ function replaceColumn(col, newChars, onDone) {
         ctx.fillRect(dest.x0, topY, scaledLetterSpacing, height);
 
         ctx.fillStyle = TEXT_COLOR;
-        ctx.globalAlpha = 0.2;
+        ctx.globalAlpha = 0.3;
         ctx.fillRect(dest.x0, topY, scaledLetterSpacing, height);
         ctx.restore();
 
@@ -412,7 +412,7 @@ ctx.shadowColor = TEXT_COLOR;
   ctx.shadowBlur = 70;
 
         // flicker alpha
-        ctx.globalAlpha = tt === 1 ? 1 : (Math.random() < 0.5 ? 0 : 1);
+        ctx.globalAlpha = .5;
         ctx.fillStyle   = TEXT_COLOR;
         ctx.fillText(nc.char, dest.x0, dropY);
         ctx.globalAlpha = 1;
