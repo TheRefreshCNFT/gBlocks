@@ -323,7 +323,7 @@ for (let i = 0; i < charsPerRow; i++) {
 }
 
 // Pick random columns for replacement
-const count = 5 + Math.floor(Math.random() * 10);
+const count = 5 + Math.floor(Math.random() * 5);
 const cols = [];
 while (cols.length < count && cols.length < visibleColumns.length) {
   const idx = Math.floor(Math.random() * visibleColumns.length);
