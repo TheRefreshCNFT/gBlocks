@@ -400,7 +400,7 @@ function replaceColumn(col, newChars, onDone) {
         const height = Math.abs(dropY - prevY) + scaledLineHeight;
         ctx.save();
         ctx.fillStyle = BG_COLOR;
-        ctx.globalAlpha = os === 'android' ? 0.2 : 0.2;
+        ctx.globalAlpha = os === 'android' ? 0.3 : 0.2;
         ctx.fillRect(dest.x0, topY, scaledLetterSpacing, height);
 
         ctx.fillStyle = TEXT_COLOR;
