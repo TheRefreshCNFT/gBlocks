@@ -404,7 +404,7 @@ function replaceColumn(col, newChars, onDone) {
         ctx.fillRect(dest.x0, topY, scaledLetterSpacing, height);
 
         ctx.fillStyle = TEXT_COLOR;
-        ctx.globalAlpha = os === 'android' ? 0.03 : 0.05;
+        ctx.globalAlpha = os === 'android' ? 0.05 : 0.05;
         ctx.fillRect(dest.x0, topY, scaledLetterSpacing, height);
         ctx.restore();
 
@@ -458,8 +458,8 @@ function animate() {
       ctx.restore();
   });
 
-  const nD1 = os === 'android' ? 75 : 275;
-  const nD2 = os === 'android' ? 15 : 100;
+  const nD1 = os === 'android' ? 275 : 275;
+  const nD2 = os === 'android' ? 100 : 100;
   const nextDelay = nD2 + Math.random() * nD1;
 setTimeout(animate, nextDelay);
 }
