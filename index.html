@@ -458,8 +458,8 @@ function animate() {
       ctx.restore();
   });
 
-  const nD1 = os === 'android' ? 275 : 275;
-  const nD2 = os === 'android' ? 100 : 100;
+  const nD1 = os === 'android' ? 250 : 275;
+  const nD2 = os === 'android' ? 75 : 100;
   const nextDelay = nD2 + Math.random() * nD1;
 setTimeout(animate, nextDelay);
 }
