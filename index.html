@@ -356,8 +356,8 @@ while (cols.length < count && cols.length < visibleColumns.length) {
 let dly, dur1, dur2;
 if (os === 'android') {
   dly = 550;
-  dur1 = 200;
-  dur2 = 600;
+  dur1 = 400;
+  dur2 = 800;
 } else if (os === 'ios') {
   dly = 550;
   dur1 = 400;
@@ -400,7 +400,7 @@ function replaceColumn(col, newChars, onDone) {
         const height = Math.abs(dropY - prevY) + scaledLineHeight;
         ctx.save();
         ctx.fillStyle = BG_COLOR;
-        ctx.globalAlpha = 0.2;
+        ctx.globalAlpha = os === 'android' ? .075 : .2;
         ctx.fillRect(dest.x0, topY, scaledLetterSpacing, height);
 
         ctx.fillStyle = TEXT_COLOR;
@@ -458,8 +458,8 @@ function animate() {
       ctx.restore();
   });
 
-  const nD1 = os === 'android' ? 300 : 275;
-  const nD2 = os === 'android' ? 125 : 100;
+  const nD1 = os === 'android' ? 500 : 275;
+  const nD2 = os === 'android' ? 300 : 100;
   const nextDelay = nD2 + Math.random() * nD1;
 setTimeout(animate, nextDelay);
 }
