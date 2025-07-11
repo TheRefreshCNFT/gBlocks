@@ -282,7 +282,7 @@ function animateColumns(now) {
     ctx.shadowColor = TEXT_COLOR;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = p.yDest - y;
-    ctx.shadowBlur = os === 'android' ? 20 : e * 70;
+    ctx.shadowBlur = os === 'android' ? 0 : e * 70;
 
     // draw char opaque
     ctx.globalAlpha = 1;
@@ -356,8 +356,8 @@ while (cols.length < count && cols.length < visibleColumns.length) {
 let dly, dur1, dur2;
 if (os === 'android') {
   dly = 300;
-  dur1 = 600;
-  dur2 = 1000;
+  dur1 = 800;
+  dur2 = 1200;
 } else if (os === 'ios') {
   dly = 550;
   dur1 = 800;
