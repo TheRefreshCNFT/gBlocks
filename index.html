@@ -400,7 +400,7 @@ function replaceColumn(col, newChars, onDone) {
         const height = Math.abs(dropY - prevY) + scaledLineHeight;
         ctx.save();
         ctx.fillStyle = BG_COLOR;
-        ctx.globalAlpha = os === 'android' ? 0.1 : 0.2;
+        ctx.globalAlpha = os === 'android' ? 0.05 : 0.2;
         ctx.fillRect(dest.x0, topY, scaledLetterSpacing, height);
 
         ctx.fillStyle = TEXT_COLOR;
@@ -412,7 +412,7 @@ ctx.shadowColor = TEXT_COLOR;
   ctx.shadowBlur = 70;
 
         // flicker alpha
-        ctx.globalAlpha = .5;
+        ctx.globalAlpha = .9;
         ctx.fillStyle   = TEXT_COLOR;
         ctx.fillText(nc.char, dest.x0, dropY);
         ctx.globalAlpha = 1;
