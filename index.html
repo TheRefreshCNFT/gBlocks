@@ -404,7 +404,7 @@ function replaceColumn(col, newChars, onDone) {
         ctx.fillRect(dest.x0, topY, scaledLetterSpacing, height);
 
         ctx.fillStyle = TEXT_COLOR;
-        ctx.globalAlpha = 0.05;
+        ctx.globalAlpha = os === 'android' ? 0.025 : 0.05;
         ctx.fillRect(dest.x0, topY, scaledLetterSpacing, height);
         ctx.restore();
 
