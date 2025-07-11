@@ -356,22 +356,23 @@ while (cols.length < count && cols.length < visibleColumns.length) {
 let dly, dur1, dur2;
 if (os === 'android') {
   dly = 400;
-  dur1 = 150;
+  dur1 = 100;
   dur2 = 500;
 } else if (os === 'ios') {
   dly = 550;
-  dur1 = 400;
-  dur2 = 800;
+  dur1 = 100;
+  dur2 = 500;
 } else {
   dly = 550;
-  dur1 = 400;
-  dur2 = 800;
+  dur1 = 100;
+  dur2 = 500;
 }
 // 8) Replace one column by “dropping” its new chars with flicker
 function replaceColumn(col, newChars, onDone) {
   // per-row delays & durations
-  const delays = Array.from({ length: ROWS }, () => Math.random() * dly);
-  const durs   = Array.from({ length: ROWS }, () => dur1 + Math.random() * dur2);
+const delays = Array.from({ length: ROWS }, () => Math.random() * dly + Math.random() * 200);
+const durs   = Array.from({ length: ROWS }, () => dur1 + Math.random() * dur2 + Math.random() * 3000);
+
 
   let completed = 0;
 
@@ -385,7 +386,8 @@ function replaceColumn(col, newChars, onDone) {
     setTimeout(() => {
       const start = performance.now();
       // initial "previous" y is well above
-      let prevY = dest.y0 - scaledLineHeight * ROWS;
+let prevY = dest.y0 - scaledLineHeight * ROWS;
+const startY = prevY;
 
       function step(now) {
         const t  = now - start;
@@ -393,10 +395,10 @@ function replaceColumn(col, newChars, onDone) {
         const e  = 1 - Math.pow(1 - tt, 3);
 
         // compute drop position
-        const dropY = dest.y0 - (scaledLineHeight * ROWS) * (1 - e);
+  const dropY = startY + (dest.y0 - startY) * e;
 
         // clear/fade the entire path between prevY and dropY, ensures always top→bottom
-        const topY = Math.min(prevY, dropY);
+        const topY = Math.max(prevY, dropY);
         const height = Math.abs(dropY - prevY) + scaledLineHeight;
         ctx.save();
         ctx.fillStyle = BG_COLOR;
@@ -407,6 +409,7 @@ function replaceColumn(col, newChars, onDone) {
         ctx.globalAlpha = 0.05;
         ctx.fillRect(dest.x0, topY, scaledLetterSpacing, height);
         ctx.restore();
+
 
 ctx.shadowColor = TEXT_COLOR;
   ctx.shadowBlur = 70;
