@@ -323,7 +323,7 @@ for (let i = 0; i < charsPerRow; i++) {
 }
 
 // Pick random columns for replacement
-const count = 5 + Math.floor(Math.random() * 10);
+const count = 5 + Math.floor(Math.random() * 7);
 const cols = [];
 while (cols.length < count && cols.length < visibleColumns.length) {
   const idx = Math.floor(Math.random() * visibleColumns.length);
@@ -412,7 +412,7 @@ const startY = prevY;
 
 
 ctx.shadowColor = TEXT_COLOR;
-  ctx.shadowBlur = 10;
+  ctx.shadowBlur = 70;
 
         // flicker alpha
         ctx.globalAlpha = .9;
@@ -452,7 +452,7 @@ function animate() {
   chars.forEach(c => {
       ctx.save();
       ctx.shadowColor = TEXT_COLOR;
-      ctx.shadowBlur = 10 + Math.random() * 70;
+      ctx.shadowBlur = os === 'android' ? 5 + Math.random() * 35 : 10 + Math.random() * 70;
       ctx.translate(c.x0, c.y0);
       ctx.scale(c.scale, c.scale);
       ctx.fillStyle = TEXT_COLOR;
@@ -461,7 +461,7 @@ function animate() {
       ctx.restore();
   });
 
-  const nD1 = os === 'android' ? 250 : 275;
+  const nD1 = os === 'android' ? 250 : 300;
   const nD2 = os === 'android' ? 75 : 100;
   const nextDelay = nD2 + Math.random() * nD1;
 setTimeout(animate, nextDelay);
