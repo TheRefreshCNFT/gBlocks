@@ -355,7 +355,7 @@ while (cols.length < count && cols.length < visibleColumns.length) {
 
 let dly, dur1, dur2;
 if (os === 'android') {
-  dly = 300;
+  dly = 550;
   dur1 = 800;
   dur2 = 1200;
 } else if (os === 'ios') {
@@ -400,7 +400,7 @@ function replaceColumn(col, newChars, onDone) {
         const height = Math.abs(dropY - prevY) + scaledLineHeight;
         ctx.save();
         ctx.fillStyle = BG_COLOR;
-        ctx.globalAlpha = os === 'android' ? 0.4 : 0.2;
+        ctx.globalAlpha = os === 'android' ? 0.3 : 0.2;
         ctx.fillRect(dest.x0, topY, scaledLetterSpacing, height);
 
         ctx.fillStyle = TEXT_COLOR;
