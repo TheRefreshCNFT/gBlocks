@@ -449,7 +449,7 @@ function animate() {
   chars.forEach(c => {
       ctx.save();
       ctx.shadowColor = TEXT_COLOR;
-      ctx.shadowBlur = 10 + Math.random() * 70;
+      ctx.shadowBlur = os === 'android' ? 5 + Math.random() * 35 : 10 + Math.random() * 70;
       ctx.translate(c.x0, c.y0);
       ctx.scale(c.scale, c.scale);
       ctx.fillStyle = TEXT_COLOR;
