@@ -334,7 +334,7 @@ while (cols.length < count && cols.length < visibleColumns.length) {
     // when all finish, start next cycle
     let doneCols = 0, cDly2, sTo1, sTo2;
 
-      cDly2 = os === 'android' ? 2000 : 4000;
+      cDly2 = os === 'android' ? 1000 : 4000;
       sTo1 = 425;
       sTo2 = 1000;
 
@@ -355,7 +355,7 @@ while (cols.length < count && cols.length < visibleColumns.length) {
 
 let dly, dur1, dur2;
 if (os === 'android') {
-  dly = 250;
+  dly = 550;
   dur1 = 500;
   dur2 = 900;
 } else if (os === 'ios') {
@@ -400,11 +400,11 @@ function replaceColumn(col, newChars, onDone) {
         const height = Math.abs(dropY - prevY) + scaledLineHeight;
         ctx.save();
         ctx.fillStyle = BG_COLOR;
-        ctx.globalAlpha = os === 'android' ? 0.1 : 0.2;
+        ctx.globalAlpha = os === 'android' ? 0.2 : 0.2;
         ctx.fillRect(dest.x0, topY, scaledLetterSpacing, height);
 
         ctx.fillStyle = TEXT_COLOR;
-        ctx.globalAlpha = os === 'android' ? 0.020 : 0.05;
+        ctx.globalAlpha = os === 'android' ? 0.03 : 0.05;
         ctx.fillRect(dest.x0, topY, scaledLetterSpacing, height);
         ctx.restore();
 
